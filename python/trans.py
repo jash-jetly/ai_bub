@@ -13,24 +13,12 @@ emma_1.txt, emma_2.txt, ...
 """
 
 from youtube_transcript_api import YouTubeTranscriptApi
-from youtube_transcript_api.proxies import WebshareProxyConfig
 from urllib.parse import urlparse, parse_qs
 import math
 import os
 import re
 import time
 from tqdm import tqdm
-
-# -------------- Proxy Configuration ------------------
-
-def create_proxy_api():
-    """Create YouTubeTranscriptApi with webshare proxy configuration."""
-    proxy_config = WebshareProxyConfig(
-        proxy_username="yxuebnob",
-        proxy_password="hcd39lseo3ow"
-    )
-    
-    return YouTubeTranscriptApi(proxy_config=proxy_config)
 
 # -------------- Utility Functions ------------------
 
@@ -145,11 +133,6 @@ def process_videos_from_file(input_file="out.txt"):
     """Read out.txt, parse mentors & video links, and save transcripts."""
     start_time = time.time()
     
-    # Setup proxy to bypass IP blocking
-    print("🌐 Setting up webshare proxy...")
-    ytt_api = create_proxy_api()
-    print("✅ Proxy configured successfully")
-    
     with open(input_file, "r", encoding="utf-8") as f:
         lines = [line.strip() for line in f if line.strip()]
 
@@ -190,6 +173,7 @@ def process_videos_from_file(input_file="out.txt"):
                     continue
 
                 try:
+                    ytt_api = YouTubeTranscriptApi()
                     fetched_transcript = ytt_api.fetch(video_id)
                     transcript = fetched_transcript.to_raw_data()
                     
