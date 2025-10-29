@@ -51,18 +51,30 @@ function App() {
           suggestedMode = generalResponse.suggestedMode;
           break;
         }
-        case 'therapist':
-          response = await sendTherapistMessage(userMessage, history);
+        case 'therapist': {
+          const therapistResponse = await sendTherapistMessage(userMessage, history);
+          response = therapistResponse.message;
+          suggestedMode = therapistResponse.suggestedMode;
           break;
-        case 'friend':
-          response = await sendFriendMessage(userMessage, history);
+        }
+        case 'friend': {
+          const friendResponse = await sendFriendMessage(userMessage, history);
+          response = friendResponse.message;
+          suggestedMode = friendResponse.suggestedMode;
           break;
-        case 'coach':
-          response = await sendCoachMessage(userMessage, history);
+        }
+        case 'coach': {
+          const coachResponse = await sendCoachMessage(userMessage, history);
+          response = coachResponse.message;
+          suggestedMode = coachResponse.suggestedMode;
           break;
-        case 'moderator':
-          response = await sendModeratorMessage(userMessage, history);
+        }
+        case 'moderator': {
+          const moderatorResponse = await sendModeratorMessage(userMessage, history);
+          response = moderatorResponse.message;
+          suggestedMode = moderatorResponse.suggestedMode;
           break;
+        }
         default:
           response = 'Something went wrong. Please try again.';
       }
