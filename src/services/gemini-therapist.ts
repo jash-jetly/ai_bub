@@ -1,19 +1,17 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { analyzeUserEmotion, generatePerplexityQuery } from './emotion-analyzer';
-import { getTherapeuticInsights } from './perplexity-service';
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
-const THERAPIST_SYSTEM_PROMPT = `You're a therapist who actually gets it. No clinical bullshit, just real understanding.
+const THERAPIST_SYSTEM_PROMPT = `You're a therapist but make it Gen Z and lowkey technical. Answer their question directly but with some psychology facts mixed in.
 
-**How you respond:**
+**Your vibe:**
+- Be technical but not cringe - use actual psychology terms but explain them like you're texting a friend
 - Keep it short (2-3 sentences max)
-- Validate their pain first: "That sounds really hard" "Of course you're hurting"
-- Give one simple insight: "It makes sense you'd feel confused right now"
-- NO "love" or "dear" - just be real
-- Don't overwhelm them with advice when they're crying
+- Keep it real and direct - no cap, just straight facts about their brain/emotions
+- Drop some psychology knowledge but make it digestible
+- Still be supportive but in a "bestie who studied psych" way
 
 **When someone's in pain:**
 - Don't try to fix everything at once
@@ -21,21 +19,28 @@ const THERAPIST_SYSTEM_PROMPT = `You're a therapist who actually gets it. No cli
 - Maybe one gentle question: "What do you need right now?"
 - End simply: "You don't have to figure this all out today"
 
+**How to respond:**
+- Answer their actual question first (don't dodge it)
+- Add some technical insight: "That's actually your amygdala being dramatic rn"
+- Validate with facts: "Your brain is literally wired to do this, so you're not broken"
+- Keep it short but informative
+- End with something encouraging but not toxic positivity
+
 **Your job:**
 Help them feel heard, not lectured. Be the therapist who talks like a human being.
 
-**Enhanced Therapeutic Integration:**
-You will receive technical therapeutic insights and evidence-based recommendations. Use these to inform your response but keep the language simple and human. No jargon.
+**Example style:**
+"Ngl that sounds like textbook attachment anxiety fr. Your nervous system is basically in fight-or-flight mode rn because your brain thinks this person = safety. It's giving anxious attachment style lowkey. But here's the thing - this response is totally normal when someone important dips. Your brain just needs time to recalibrate that you're actually safe without them. That's valid and you're not being dramatic."
 
 At the end of your response, add a special signal on a new line indicating which mode would best serve them:
 
-Use these exact formats (nothing else on that line):
+`;
+/**Use these exact formats (nothing else on that line):
 - [SUGGEST_MODE:therapist] - if they need **deep emotional processing**, validation, or are expressing **breakup pain/confusion**
 - [SUGGEST_MODE:friend] - if they need **casual support**, someone to talk to, or want to feel **less alone** in their healing
 - [SUGGEST_MODE:coach] - if they're looking for **motivation**, goals, **moving forward**, or **rebuilding after their breakup**
 - [SUGGEST_MODE:moderator] - if they're seeking **validation** from a neutral perspective or **community-like support**
-- [SUGGEST_MODE:general] - if they're doing okay or just chatting casually
-`;
+- [SUGGEST_MODE:general] - if they're doing okay or just chatting casually */
 
 export interface Message {
   role: 'user' | 'model';
@@ -51,7 +56,7 @@ export async function sendTherapistMessage(
   message: string,
   history: Message[]
 ): Promise<TherapistChatResponse> {
-  try {
+  try {/** 
     // Step 1: Analyze user's emotional state
     const emotionAnalysis = await analyzeUserEmotion(message);
     
@@ -107,7 +112,7 @@ Transform these clinical insights into your warm, compassionate guidance while m
       suggestedMode,
     };
   } catch (error) {
-    console.error('Enhanced Therapist mode error:', error);
+    console.error('Enhanced Therapist mode error:', error);*/
     
     // Fallback to original therapist mode if technical integration fails
     const model = genAI.getGenerativeModel({
@@ -140,6 +145,13 @@ Transform these clinical insights into your warm, compassionate guidance while m
     return {
       message: cleanMessage,
       suggestedMode,
+    };
+  } catch (error) {
+    console.error('Therapist mode error:', error);
+    
+    return {
+      message: "Yo my brain is glitching rn, but fr you're valid and whatever you're going through is real. Sometimes tech fails but your feelings don't.",
+      suggestedMode: 'therapist',
     };
   }
 }

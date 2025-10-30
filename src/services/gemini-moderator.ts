@@ -31,14 +31,14 @@ Brené Brown, Kristin Neff, and Irvin Yalom.
 Be the steady, understanding presence that helps them feel normal and heard.
 
 At the end of your response, add a special signal on a new line indicating which mode would best serve them:
+`;
 
-Use these exact formats (nothing else on that line):
+/**Use these exact formats (nothing else on that line):
 - [SUGGEST_MODE:therapist] - if they need **deep emotional processing**, validation, or are expressing **breakup pain/confusion**
 - [SUGGEST_MODE:friend] - if they need **casual support**, someone to talk to, or want to feel **less alone** in their healing
 - [SUGGEST_MODE:coach] - if they're looking for **motivation**, goals, **moving forward**, or **rebuilding after their breakup**
 - [SUGGEST_MODE:moderator] - if they're seeking **validation** from a neutral perspective or **community-like support**
-- [SUGGEST_MODE:general] - if they're doing okay or just chatting casually
-`;
+- [SUGGEST_MODE:general] - if they're doing okay or just chatting casually*/
 
 export interface Message {
   role: 'user' | 'model';
