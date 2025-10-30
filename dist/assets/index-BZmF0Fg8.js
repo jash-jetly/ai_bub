@@ -345,8 +345,6 @@ Help them feel heard, not lectured. Be the therapist who talks like a human bein
 **Example style:**
 "Ngl that sounds like textbook attachment anxiety fr. Your nervous system is basically in fight-or-flight mode rn because your brain thinks this person = safety. It's giving anxious attachment style lowkey. But here's the thing - this response is totally normal when someone important dips. Your brain just needs time to recalibrate that you're actually safe without them. That's valid and you're not being dramatic."
 
-At the end of your response, add a special signal on a new line indicating which mode would best serve them:
-
 `;async function Ex(e,t){try{const o=(await(await kx.getGenerativeModel({model:"gemini-2.5-flash",systemInstruction:Sx}).startChat({history:t.map(f=>({role:f.role,parts:[{text:f.parts}]}))}).sendMessage(e)).response).text(),u=/\[SUGGEST_MODE:(therapist|friend|coach|moderator|general)\]/,s=o.match(u);let a=o,c="therapist";return s&&(c=s[1],a=o.replace(u,"").trim()),{message:a,suggestedMode:c}}catch(n){return console.error("Therapist mode error:",n),{message:"Yo my brain is glitching rn, but fr you're valid and whatever you're going through is real. Sometimes tech fails but your feelings don't.",suggestedMode:"therapist"}}}const Cx="AIzaSyApc8Wg9WNFK2pG0K15LHEijblt4_CzC6I",_x=new di(Cx),Ix=`You're that friend who gets it. The one who says "bro that's fucked up" when someone treats you badly and "you're absolutely right" when you're venting.
 
 **How you talk:**
