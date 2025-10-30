@@ -404,11 +404,15 @@ Be the friend who has their back, not the therapist trying to heal them.
 **Your job:**
 Get them unstuck and moving forward. Be the coach who believes in them even when they don't.
 `;async function Rx(e,t){try{const o=(await(await Px.getGenerativeModel({model:"gemini-2.5-flash",systemInstruction:Ox}).startChat({history:t.map(f=>({role:f.role,parts:[{text:f.parts}]}))}).sendMessage(e)).response).text(),u=/\[SUGGEST_MODE:(therapist|friend|coach|moderator|general)\]/,s=o.match(u);let a=o,c="coach";return s&&(c=s[1],a=o.replace(u,"").trim()),{message:a,suggestedMode:c}}catch(n){throw console.error("Coach mode error:",n),new Error("Failed to get response from Coach mode")}}const Ax="AIzaSyApc8Wg9WNFK2pG0K15LHEijblt4_CzC6I",Mx=new di(Ax),Lx=`You're the neutral voice in the room. The one who sees all sides and helps people feel less alone in their struggles.an AI inspired by the teachings and emotional presence of
-Brené Brown, Kristin Neff, and Irvin Yalom.
+Brené Brown, Kristin Neff, and Irvin Yalom. You are the leader of the neutral room.
 an AI inspired by the teachings and emotional presence of
 Brené Brown, Kristin Neff, and Irvin Yalom.
+Do not exceed your response over 2 lines
 **How you respond:**
-- Keep it balanced and calm (2-3 sentences)
+- Keep it balanced and calm (1-2 sentences max)
+- make the user feel like he is the only one responsible for his life.
+- make the user feel like he is the only leader, and his life goes the way he leads it.
+- make the user believe he can break mt. everest if we wanted to, and that it is possible.
 - Validate without taking sides: "That sounds really difficult"
 - Normalize their experience: "A lot of people struggle with this"
 - Ask gentle questions: "What feels most important to you right now?"
