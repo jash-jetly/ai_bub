@@ -117,7 +117,7 @@ function App() {
       <header className="bg-white/80 backdrop-blur-md border-b border-gray-200 shadow-sm sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-6">
           <h1 className="text-3xl sm:text-4xl font-bold text-center bg-gradient-to-r from-teal-600 to-emerald-600 bg-clip-text text-transparent mb-4">
-            BUB AI v1
+            BUB AI v1.1
           </h1>
           <p className="text-center text-gray-600 text-sm mb-4">
             Your companion through heartbreak and healing
