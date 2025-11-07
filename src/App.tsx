@@ -4,10 +4,8 @@ import { ChatMessage } from './components/ChatMessage';
 import { ChatInput } from './components/ChatInput';
 import { TypingIndicator } from './components/TypingIndicator';
 import { sendTherapistMessage } from './services/gemini-therapist';
-import { sendFriendMessage } from './services/gemini-friend';
-import { sendCoachMessage } from './services/gemini-coach';
-import { sendModeratorMessage } from './services/gemini-moderator';
-import { sendGeneralMessage } from './services/gemini-general';
+import { splitMessageIntoHumanParts, getMessageDelay } from './utils/messageSplitter';
+import { isMessageComplete, buildCombinedUserMessage } from './utils/intuition';
 
 interface Message {
   role: 'user' | 'model';
@@ -15,10 +13,11 @@ interface Message {
 }
 
 function App() {
-  const [mode, setMode] = useState<AIMode>('general');
+  const [mode, setMode] = useState<AIMode>('therapist');
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showModeSwitch, setShowModeSwitch] = useState(false);
+  const [userBuffer, setUserBuffer] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -36,8 +35,22 @@ function App() {
     };
 
     setMessages((prev) => [...prev, newUserMessage]);
-    setIsLoading(true);
     setShowModeSwitch(false);
+
+    // Add to buffer and decide if we should respond now
+    const nextBuffer = [...userBuffer, userMessage];
+    setUserBuffer(nextBuffer);
+
+    const readyToRespond = isMessageComplete(userMessage);
+    if (!readyToRespond) {
+      // Wait for the user to finish; do not call the model yet
+      return;
+    }
+
+    // We're ready: combine buffered user messages and clear buffer
+    const combinedUserText = buildCombinedUserMessage(nextBuffer);
+    setUserBuffer([]);
+    setIsLoading(true);
 
     try {
       let response: string;
@@ -45,46 +58,32 @@ function App() {
       const history = [...messages];
 
       switch (mode) {
-        case 'general': {
-          const generalResponse = await sendGeneralMessage(userMessage, history);
-          response = generalResponse.message;
-          suggestedMode = generalResponse.suggestedMode;
-          break;
-        }
         case 'therapist': {
-          const therapistResponse = await sendTherapistMessage(userMessage, history);
+          const therapistResponse = await sendTherapistMessage(combinedUserText, history);
           response = therapistResponse.message;
           suggestedMode = therapistResponse.suggestedMode;
-          break;
-        }
-        case 'friend': {
-          const friendResponse = await sendFriendMessage(userMessage, history);
-          response = friendResponse.message;
-          suggestedMode = friendResponse.suggestedMode;
-          break;
-        }
-        case 'coach': {
-          const coachResponse = await sendCoachMessage(userMessage, history);
-          response = coachResponse.message;
-          suggestedMode = coachResponse.suggestedMode;
-          break;
-        }
-        case 'moderator': {
-          const moderatorResponse = await sendModeratorMessage(userMessage, history);
-          response = moderatorResponse.message;
-          suggestedMode = moderatorResponse.suggestedMode;
           break;
         }
         default:
           response = 'Something went wrong. Please try again.';
       }
 
-      const aiMessage: Message = {
-        role: 'model',
-        parts: response,
-      };
+      // Split the response into multiple human-like parts
+      const messageParts = splitMessageIntoHumanParts(response);
+      
+      // Add each part as a separate message with delays
+      for (let i = 0; i < messageParts.length; i++) {
+        const delay = getMessageDelay(i, messageParts.length);
+        
+        await new Promise(resolve => setTimeout(resolve, delay));
+        
+        const aiMessage: Message = {
+          role: 'model',
+          parts: messageParts[i],
+        };
 
-      setMessages((prev) => [...prev, aiMessage]);
+        setMessages((prev) => [...prev, aiMessage]);
+      }
 
       if (suggestedMode && suggestedMode !== 'general' && suggestedMode !== mode) {
         setTimeout(() => {
@@ -122,7 +121,6 @@ function App() {
           <p className="text-center text-gray-600 text-sm mb-4">
             Your companion through heartbreak and healing
           </p>
-          <ModeSelector selectedMode={mode} onModeChange={handleModeChange} />
           {showModeSwitch && (
             <div className="mt-4 text-center">
               <p className="text-sm text-teal-600 font-medium animate-fade-in">
@@ -159,7 +157,7 @@ function App() {
 
         <div className="bg-white/80 backdrop-blur-md border-t border-gray-200 px-4 py-4">
           <div className="max-w-4xl mx-auto">
-            <ChatInput onSendMessage={sendMessage} disabled={isLoading} />
+            <ChatInput onSendMessage={sendMessage} />
           </div>
         </div>
       </main>
