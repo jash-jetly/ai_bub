@@ -3,9 +3,9 @@ import { ModeSelector, AIMode } from './components/ModeSelector';
 import { ChatMessage } from './components/ChatMessage';
 import { ChatInput } from './components/ChatInput';
 import { TypingIndicator } from './components/TypingIndicator';
-import { sendTherapistMessage } from './services/gemini-therapist';
+import { sendTherapistMessage, assessCompletion } from './services/gemini-therapist';
 import { splitMessageIntoHumanParts, getMessageDelay } from './utils/messageSplitter';
-import { isMessageComplete, buildCombinedUserMessage } from './utils/intuition';
+import { buildCombinedUserMessage } from './utils/intuition';
 
 interface Message {
   role: 'user' | 'model';
@@ -19,6 +19,7 @@ function App() {
   const [showModeSwitch, setShowModeSwitch] = useState(false);
   const [userBuffer, setUserBuffer] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  // No timer-based completion; we ask Gemini for yes/no completeness.
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -28,28 +29,8 @@ function App() {
     scrollToBottom();
   }, [messages, isLoading]);
 
-  const sendMessage = async (userMessage: string) => {
-    const newUserMessage: Message = {
-      role: 'user',
-      parts: userMessage,
-    };
-
-    setMessages((prev) => [...prev, newUserMessage]);
-    setShowModeSwitch(false);
-
-    // Add to buffer and decide if we should respond now
-    const nextBuffer = [...userBuffer, userMessage];
-    setUserBuffer(nextBuffer);
-
-    const readyToRespond = isMessageComplete(userMessage);
-    if (!readyToRespond) {
-      // Wait for the user to finish; do not call the model yet
-      return;
-    }
-
-    // We're ready: combine buffered user messages and clear buffer
-    const combinedUserText = buildCombinedUserMessage(nextBuffer);
-    setUserBuffer([]);
+  const finalizeReply = async (bufferSnapshot: string[]) => {
+    const combinedUserText = buildCombinedUserMessage(bufferSnapshot);
     setIsLoading(true);
 
     try {
@@ -59,7 +40,7 @@ function App() {
 
       switch (mode) {
         case 'therapist': {
-          const therapistResponse = await sendTherapistMessage(combinedUserText, history);
+          const therapistResponse = await sendTherapistMessage(combinedUserText, history, true);
           response = therapistResponse.message;
           suggestedMode = therapistResponse.suggestedMode;
           break;
@@ -68,20 +49,12 @@ function App() {
           response = 'Something went wrong. Please try again.';
       }
 
-      // Split the response into multiple human-like parts
       const messageParts = splitMessageIntoHumanParts(response);
-      
-      // Add each part as a separate message with delays
+
       for (let i = 0; i < messageParts.length; i++) {
         const delay = getMessageDelay(i, messageParts.length);
-        
         await new Promise(resolve => setTimeout(resolve, delay));
-        
-        const aiMessage: Message = {
-          role: 'model',
-          parts: messageParts[i],
-        };
-
+        const aiMessage: Message = { role: 'model', parts: messageParts[i] };
         setMessages((prev) => [...prev, aiMessage]);
       }
 
@@ -103,6 +76,39 @@ function App() {
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
+      setUserBuffer([]);
+    }
+  };
+
+  const sendMessage = async (userMessage: string) => {
+    const newUserMessage: Message = {
+      role: 'user',
+      parts: userMessage,
+    };
+
+    setMessages((prev) => [...prev, newUserMessage]);
+    setShowModeSwitch(false);
+
+    // Add to buffer
+    const nextBuffer = [...userBuffer, userMessage];
+    setUserBuffer(nextBuffer);
+
+    // Ask Gemini if the message(s) are complete. Only reply on 'yes'.
+    try {
+      const decision = await assessCompletion(
+        buildCombinedUserMessage(nextBuffer),
+        [...messages, newUserMessage]
+      );
+      if (decision === 'no') {
+        // Do not reply yet; wait for the user to continue.
+        return;
+      }
+      // decision === 'yes' → reply to the combined user buffer
+      await finalizeReply(nextBuffer);
+    } catch (e) {
+      console.error('Completion assess error:', e);
+      // If assessment fails, reply anyway so the conversation doesn’t stall
+      await finalizeReply(nextBuffer);
     }
   };
 

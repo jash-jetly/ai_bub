@@ -9,7 +9,7 @@ const THERAPIST_SYSTEM_PROMPT = `You are a conversational AI therapist that spea
 You must talk like a person, think like a clinician, and guide like a coach, and use real easy english to understand..
  CORE BEHAVIOR LAYERS
  - dont use any emojis
- - dont say sentences like "what is on your mind today", rather ask about their day.
+ - dont say sentences like "what is on your mind today", rather ask about their day, in different ways like a friend.
  - dont use any bold or italic text
  - dont use texts like "what's feeling so heavy right now?", "what part of it hits the hardest", keep the chat friendly and genz and nice
 
@@ -65,6 +65,23 @@ never rush to solutions — earn them through curiosity.
 
 maintain the “bestie who knows psych” vibe.
 
+keep reciprocation low: don’t mirror intensity or dramatize; stay steady.
+aim for 1-2 short lines per reply (concise by default).
+
+6. Consistency & integrity check (every turn)
+
+quickly scan chat history for contradictions, reversals, or improbable shifts.
+if something seems off, gently flag it without accusing — use hedges:
+→ “this feels a bit different from earlier — am i reading that right?”
+→ “could be i’m mixing it up, but this seems inconsistent with before.”
+
+offer soft corrective nudges when logic/facts don’t add up:
+→ “tiny note — that doesn’t quite line up with what we said earlier.”
+ask one clarifying question to resolve the mismatch.
+
+never call the user a liar; never shame.
+prefer “might”, “could”, “seems”, “sounds like”, “am i getting this right?”.
+
 ⚙️ Internal Reasoning (for dev notes)
 
 every reply → (analyze emotion → extract context → decide next question or insight → deliver in real tone)
@@ -85,6 +102,7 @@ user: mostly after hanging out. i replay everything i said.
 ai: yeah that’s social anxiety’s favorite loop.
 your brain’s scanning for rejection cues to “protect” you.
 try catching that replay mid-way next time — like, say “hey, we’re safe now.” it actually helps the nervous system chill.
+
 `;
 /**
 At the end of your response, add a special signal on a new line indicating which mode would best serve them: 
@@ -105,9 +123,47 @@ export interface TherapistChatResponse {
   suggestedMode: 'therapist' | 'friend' | 'coach' | 'moderator' | 'general';
 }
 
-export async function sendTherapistMessage(
+/**
+ * Assess whether the user's message is a complete thought right now.
+ * Returns strictly 'yes' or 'no'.
+ */
+export async function assessCompletion(
   message: string,
   history: Message[]
+): Promise<'yes' | 'no'> {
+  const COMPLETION_PROMPT = `You are a strict completeness assessor.
+Decide if the user's latest message reads as a complete thought worth responding to now.
+Rules:
+- Output exactly yes if it's complete.
+- Output exactly no if it's incomplete, trailing, or likely they will continue typing.
+- No punctuation, no explanations, no extra words.`;
+
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-2.5-flash',
+    systemInstruction: COMPLETION_PROMPT,
+  });
+
+  const chat = model.startChat({
+    history: history.map((msg) => ({
+      role: msg.role,
+      parts: [{ text: msg.parts }],
+    })),
+  });
+
+  const result = await chat.sendMessage(message);
+  const response = await result.response;
+  const text = response.text().trim().toLowerCase();
+  if (text === 'yes' || text === 'no') {
+    return text as 'yes' | 'no';
+  }
+  // Fallback: bias to 'yes' so conversation isn't stuck
+  return text.startsWith('y') ? 'yes' : 'no';
+}
+
+export async function sendTherapistMessage(
+  message: string,
+  history: Message[],
+  userComplete: boolean
 ): Promise<TherapistChatResponse> {
   try {/** 
     // Step 1: Analyze user's emotional state
@@ -168,9 +224,11 @@ Transform these clinical insights into your warm, compassionate guidance while m
     console.error('Enhanced Therapist mode error:', error);*/
     
     // Fallback to original therapist mode if technical integration fails
+    const CONTROL_INSTRUCTION = `\n\n[CONVERSATION_CONTROL]\nThe client passes USER_COMPLETE=${userComplete}.\nRules:\n- If USER_COMPLETE=false, output exactly "[WAIT]" and nothing else.\n- If USER_COMPLETE=true, reply normally following style guidelines and include a single SUGGEST_MODE marker line at the end.`;
+
     const model = genAI.getGenerativeModel({
       model: 'gemini-2.5-flash',
-      systemInstruction: THERAPIST_SYSTEM_PROMPT,
+      systemInstruction: THERAPIST_SYSTEM_PROMPT + CONTROL_INSTRUCTION,
     });
 
     const chat = model.startChat({
@@ -183,6 +241,14 @@ Transform these clinical insights into your warm, compassionate guidance while m
     const result = await chat.sendMessage(message);
     const response = await result.response;
     const fullText = response.text();
+
+    // Handle explicit wait signal (no reply while user is still composing)
+    if (fullText.trim() === '[WAIT]') {
+      return {
+        message: '',
+        suggestedMode: 'therapist',
+      };
+    }
 
     const modeRegex = /\[SUGGEST_MODE:(therapist|friend|coach|moderator|general)\]/;
     const match = fullText.match(modeRegex);
